@@ -19,11 +19,17 @@ from app.db.repositories.tags import TagsRepository
 from app.models.domain.items import Item
 from app.models.domain.users import User
 
+import os
+import openai
+
+
 SELLER_USERNAME_ALIAS = "seller_username"
 SLUG_ALIAS = "slug"
 
 CAMEL_OR_SNAKE_CASE_TO_WORDS = r"^[a-z\d_\-]+|[A-Z\d_\-][^A-Z\d_\-]*"
 
+# Load your API key from an environment variable or secret management service
+openai.api_key = os.environ["OPENAI_API_KEY"]
 
 class ItemsRepository(BaseRepository):  # noqa: WPS214
     def __init__(self, conn: Connection) -> None:
@@ -31,6 +37,7 @@ class ItemsRepository(BaseRepository):  # noqa: WPS214
         self._profiles_repo = ProfilesRepository(conn)
         self._tags_repo = TagsRepository(conn)
 
+    
     async def create_item(  # noqa: WPS211
         self,
         *,
@@ -42,6 +49,22 @@ class ItemsRepository(BaseRepository):  # noqa: WPS214
         image: Optional[str] = None,
         tags: Optional[Sequence[str]] = None,
     ) -> Item:
+        if not image:
+
+            response = openai.Image.create(
+                prompt=title,
+                n=1,
+                size="256x256"
+            )
+            image_url = response['data'][0]['url']
+
+        
+            # product_title = title
+            # api_key = openai.api_key
+            
+            # product_image_url = generate_image(product_title, api_key)
+            # image = main(title, api_key)
+        
         async with self.connection.transaction():
             item_row = await queries.create_new_item(
                 self.connection,
