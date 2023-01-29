@@ -19,6 +19,11 @@ from app.db.repositories.tags import TagsRepository
 from app.models.domain.items import Item
 from app.models.domain.users import User
 
+import requests
+from requests.structures import CaseInsensitiveDict
+import json
+
+
 SELLER_USERNAME_ALIAS = "seller_username"
 SLUG_ALIAS = "slug"
 
@@ -31,6 +36,7 @@ class ItemsRepository(BaseRepository):  # noqa: WPS214
         self._profiles_repo = ProfilesRepository(conn)
         self._tags_repo = TagsRepository(conn)
 
+    
     async def create_item(  # noqa: WPS211
         self,
         *,
@@ -42,6 +48,45 @@ class ItemsRepository(BaseRepository):  # noqa: WPS214
         image: Optional[str] = None,
         tags: Optional[Sequence[str]] = None,
     ) -> Item:
+        if not image:
+
+            # Adding Generate_Image function
+            QUERY_URL = "https://api.openai.com/v1/images/generations"
+
+            def generate_image(prompt, api_key, size=(256, 256)):
+                headers = CaseInsensitiveDict()
+                headers["Content-Type"] = "application/json"
+                api_key = "Bearer " + api_key
+                headers["Authorization"] = api_key
+                
+                model = "image-alpha-001"
+                data = """
+                {
+                    """
+                data += f'"model": "{model}",'
+                data += f'"prompt": "{prompt}",'
+                data += """
+                    "num_images":1,
+                    "size":"256x256",
+                    "response_format":"url"
+                }
+                """
+
+            resp = requests.post(QUERY_URL, headers=headers, data=data)
+
+            if resp.status_code != 200:
+                raise ValueError("Failed to generate image "+resp.text)
+
+                response_text = json.loads(resp.text)
+                return response_text['data'][0]['url']
+
+                product_title = title
+                api_key = "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"
+
+                product_image_url = generate_image(product_title, api_key)
+
+            image = main(title, "<YOUR API KEY HERE>")
+        
         async with self.connection.transaction():
             item_row = await queries.create_new_item(
                 self.connection,
